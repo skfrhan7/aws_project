@@ -3,7 +3,10 @@ provider "aws" {
 }
 
 data "aws_vpc" "default" {
-	default = true 
+	filter {
+		name = "tag:Name"
+		values = ["604-vpc"]
+	}
 }
 data "aws_subnets" "example" {
 	filter {
