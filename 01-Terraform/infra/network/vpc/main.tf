@@ -48,3 +48,70 @@ resource "aws_subnet" "aws05_private_subnet2c" {
 		Name = "aws05_private_subnet2c"
 	}
 }
+
+resource "aws_internet_gateway" "aws05_igw" {
+	vpc_id = aws_vpc.aws05_vpc.id
+
+	tags = {
+		Name = "aws05-Internet-gateway"
+	}
+}
+
+resource "aws_eip" "aws05_eip" { 
+	vpc = true
+	depends_on = ["aws_internet_gateway.aws05_igw"]
+	lifecycle {
+		create_before_destroy = true
+	}
+}
+
+resource "aws_nat_gateway" "aws05_nat" {
+	allocation_id = aws_eip.aws05_eip.id
+	subnet_id = aws_subnet.aws05_public_subnet2a.id
+	depends_on = ["aws_internet_gateway.aws05_igw"]
+}
+
+resource "aws_default_route_table" "aws05_public_rt" {
+  default_route_table_id = aws_vpc.aws05_vpc.default_route_table_id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.aws05_igw.id
+  }
+  tags = {
+    Name = "aws05 public route table"
+  }
+}
+
+resource "aws_route_table_association" "aws05_public_rta_2a" {
+  subnet_id      = aws_subnet.aws05_public_subnet2a.id
+  route_table_id = aws_default_route_table.aws05_public_rt.id
+}
+
+resource "aws_route_table_association" "aws05_public_rta_2c" {
+  subnet_id      = aws_subnet.aws05_public_subnet2c.id
+  route_table_id = aws_default_route_table.aws05_public_rt.id
+}
+
+resource "aws_route_table" "aws05_private_rt" {
+	vpc_id = aws_vpc.aws05_vpc.id
+	tags = {
+		Name = "aws05 private route table"
+	}
+}
+
+resource "aws_route_table_association" "aws05_private_rta_2a" {
+  subnet_id      = aws_subnet.aws05_private_subnet2a.id
+  route_table_id = aws_route_table.aws05_private_rt.id
+}
+
+resource "aws_route_table_association" "aws05_private_rta_2c" {
+  subnet_id      = aws_subnet.aws05_private_subnet2c.id
+  route_table_id = aws_route_table.aws05_private_rt.id
+}
+
+resource "aws_route" "aws05_private_rt_table" {
+	route_table_id = aws_route_table.aws05_private_rt.id
+	destination_cidr_block = "0.0.0.0/0"
+	nat_gateway_id = aws_nat_gateway.aws05_nat.id
+}
